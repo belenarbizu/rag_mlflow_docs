@@ -1,0 +1,7 @@
+langchain-text-splitters
+qdrant-client
+sentence-transformers
+uvicorn
+python-dotenv
+fastapi
+ollama
