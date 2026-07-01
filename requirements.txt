@@ -5,3 +5,5 @@ uvicorn
 python-dotenv
 fastapi
 ollama
+ragas==0.4.3
+langchain-community==0.3.27
