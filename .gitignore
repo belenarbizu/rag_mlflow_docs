@@ -1,7 +1,6 @@
 __pycache__/
 venv/
 .env
-chunks.jsonl
-data/
 eval_dataset.json
 ragas_results.csv
+data/
