@@ -11,8 +11,6 @@ Requisitos:
     3. pip install ollama
 """
 
-import ollama
-
 SYSTEM_PROMPT = """Eres un asistente experto en MLflow. Respondes preguntas \
 usando UNICAMENTE la informacion del contexto proporcionado, extraido de la \
 documentacion oficial de MLflow.
@@ -27,24 +25,17 @@ claramente en vez de inventar una respuesta.
 
 
 class Generator:
-    def __init__(self, model: str = "llama3.2:3b"):
+    def __init__(self, model="mistral"):
         self.model = model
-
-    def build_context(self, chunks: list[dict]) -> str:
-        parts = []
-        for i, c in enumerate(chunks, start=1):
-            parts.append(
-                f"[Fragmento {i} | fuente: {c['source']}]\n{c['text']}"
-            )
+ 
+    def build_context(self, chunks):
+        parts = [f"[Fragmento {i+1} | fuente: {c['source']}]\n{c['text']}" for i, c in enumerate(chunks)]
         return "\n\n---\n\n".join(parts)
-
-    def answer(self, question: str, chunks: list[dict]) -> str:
+ 
+    def answer(self, question, chunks):
+        import ollama  # import lazy: permite mockear en tests sin tener ollama instalado
         context = self.build_context(chunks)
-        user_message = (
-            f"Contexto:\n{context}\n\n"
-            f"Pregunta del usuario: {question}"
-        )
-
+        user_message = f"Contexto:\n{context}\n\nPregunta del usuario: {question}"
         response = ollama.chat(
             model=self.model,
             messages=[
