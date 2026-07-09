@@ -4,3 +4,4 @@ venv/
 eval_dataset.json
 ragas_results.csv
 data/
+.pytest_cache/
