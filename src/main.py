@@ -3,18 +3,22 @@ main.py
 
 API del RAG sobre la documentacion de MLflow.
 
-Uso:
-    uvicorn main:app --reload --port 8000
+Variables de entorno (ver .env.example):
+    QDRANT_URL          - URL de Qdrant (default: http://localhost:6333)
+    QDRANT_COLLECTION   - nombre de la coleccion (default: mlflow_docs)
+    OLLAMA_MODEL        - modelo LLM (default: mistral)
+    OLLAMA_HOST         - URL de Ollama (default: http://localhost:11434)
 """
 
 import os
+import time
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from generator import Generator
-from retriever import Retriever
+from src.generator import Generator
+from src.retriever import Retriever
 
 load_dotenv()
 
@@ -24,7 +28,24 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "mistral")
 
 app = FastAPI(title="MLflow Docs RAG")
 
-retriever = Retriever(qdrant_url=QDRANT_URL, collection=COLLECTION)
+
+def init_retriever(retries: int = 5, delay: int = 3) -> Retriever:
+    """Intenta conectar a Qdrant con reintentos, por si la API arranca antes que Qdrant."""
+    for attempt in range(1, retries + 1):
+        try:
+            r = Retriever(qdrant_url=QDRANT_URL, collection=COLLECTION)
+            # Prueba real de conexion
+            r.client.get_collection(COLLECTION)
+            print(f"Conectado a Qdrant en {QDRANT_URL} (intento {attempt})")
+            return r
+        except Exception as e:
+            print(f"Qdrant no disponible (intento {attempt}/{retries}): {e}")
+            if attempt < retries:
+                time.sleep(delay)
+    raise RuntimeError(f"No se pudo conectar a Qdrant en {QDRANT_URL} tras {retries} intentos")
+
+
+retriever = init_retriever()
 generator = Generator(model=OLLAMA_MODEL)
 
 

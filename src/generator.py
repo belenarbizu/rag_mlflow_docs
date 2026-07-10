@@ -2,14 +2,15 @@
 generator.py
 
 Construye el prompt con el contexto recuperado y llama a un modelo
-local servido por Ollama (gratuito, corre en tu propia maquina).
+local servido por Ollama.
 
-Requisitos:
-    1. Instalar Ollama: https://ollama.com/download
-    2. Descargar un modelo, por ejemplo:
-         ollama pull llama3.2:3b
-    3. pip install ollama
+Variables de entorno:
+    OLLAMA_MODEL  - nombre del modelo (default: mistral)
+    OLLAMA_HOST   - URL del servidor Ollama (default: http://localhost:11434)
+                    En Docker usar: http://host.docker.internal:11434
 """
+
+import os
 
 SYSTEM_PROMPT = """Eres un asistente experto en MLflow. Respondes preguntas \
 usando UNICAMENTE la informacion del contexto proporcionado, extraido de la \
@@ -25,18 +26,29 @@ claramente en vez de inventar una respuesta.
 
 
 class Generator:
-    def __init__(self, model="mistral"):
+    def __init__(self, model: str = "mistral"):
         self.model = model
- 
-    def build_context(self, chunks):
-        parts = [f"[Fragmento {i+1} | fuente: {c['source']}]\n{c['text']}" for i, c in enumerate(chunks)]
+        self.ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+
+    def build_context(self, chunks: list[dict]) -> str:
+        parts = []
+        for i, c in enumerate(chunks, start=1):
+            parts.append(
+                f"[Fragmento {i} | fuente: {c['source']}]\n{c['text']}"
+            )
         return "\n\n---\n\n".join(parts)
- 
-    def answer(self, question, chunks):
-        import ollama  # import lazy: permite mockear en tests sin tener ollama instalado
+
+    def answer(self, question: str, chunks: list[dict]) -> str:
+        import ollama
+
         context = self.build_context(chunks)
-        user_message = f"Contexto:\n{context}\n\nPregunta del usuario: {question}"
-        response = ollama.chat(
+        user_message = (
+            f"Contexto:\n{context}\n\n"
+            f"Pregunta del usuario: {question}"
+        )
+
+        client = ollama.Client(host=self.ollama_host)
+        response = client.chat(
             model=self.model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
