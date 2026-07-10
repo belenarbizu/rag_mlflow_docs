@@ -30,16 +30,21 @@ This project complements a previous classic MLOps project (churn prediction with
 
 ```
 .
-├── load_and_chunk.py      # loads .mdx/.md files, cleans and splits into chunks
-├── embed_and_index.py     # generates embeddings and uploads them to Qdrant
-├── retriever.py           # semantic search over Qdrant
-├── generator.py           # builds the prompt and calls the LLM via Ollama
-├── main.py                # FastAPI app (POST /query endpoint)
-├── run_ragas_eval.py      # automated evaluation with RAGAS
-├── eval_dataset.json      # questions + reference answers for evaluation
-├── docker-compose.yml     # spins up Qdrant
+├── Dockerfile
+├── docker-compose.yml     # spins up Qdrant + API together
+├── conftest.py            # pytest path configuration
 ├── requirements.txt
-└── .env.example           # environment variables template (copy to .env)
+├── .env.example           # environment variables template (copy to .env)
+├── src/
+│   ├── load_and_chunk.py  # loads .mdx/.md files, cleans and splits into chunks
+│   ├── embed_and_index.py # generates embeddings and uploads them to Qdrant
+│   ├── retriever.py       # semantic search over Qdrant
+│   ├── generator.py       # builds the prompt and calls the LLM via Ollama
+│   ├── main.py            # FastAPI app (POST /query endpoint)
+│   └── run_ragas_eval.py  # automated evaluation with RAGAS
+├── tests/
+│   └── test_pipeline.py   # 42 pytest tests (chunking, retrieval, generator, API)
+└── eval_dataset.json      # questions + reference answers for evaluation
 ```
 
 > `classic-ml/` (source documents) and `.env` are not included in this repo — see setup instructions below.
@@ -50,7 +55,7 @@ This project complements a previous classic MLOps project (churn prediction with
 
 ### 1. Download the MLflow documentation
 
-The source documents are **not included in this repository**. You need to clone the MLflow repo and copy the `classic-ml` folder locally:
+The source documents are **not included in this repository**. Clone the MLflow repo and copy the `classic-ml` folder locally:
 
 ```bash
 git clone --depth 1 https://github.com/mlflow/mlflow.git
@@ -61,7 +66,7 @@ Then copy `mlflow/docs/docs/classic-ml/` into the root of this project so the st
 ```
 rag-mlflow-docs/
 ├── classic-ml/        ← paste it here
-├── main.py
+├── src/
 ├── ...
 ```
 
@@ -79,46 +84,59 @@ The `.env.example` file already contains the correct default values — no chang
 QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=mlflow_docs
 OLLAMA_MODEL=mistral
+OLLAMA_HOST=http://host.docker.internal:11434
 ```
 
-### 3. Start Qdrant
-
-```bash
-docker compose up -d
-```
-
-### 4. Pull the local model
+### 3. Pull the local model
 
 ```bash
 ollama pull mistral
 ```
 
-### 5. Install dependencies
+### 4. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 6. Index the documentation
+### 5. Index the documentation
 
 ```bash
-python load_and_chunk.py --input ./classic-ml --output chunks.jsonl
-python embed_and_index.py --input chunks.jsonl --collection mlflow_docs
+python src/load_and_chunk.py --input ./classic-ml --output chunks.jsonl
+python src/embed_and_index.py --input chunks.jsonl --collection mlflow_docs
 ```
 
-### 7. Start the API
+### 6. Start the full stack
 
 ```bash
-uvicorn main:app --reload --port 8000
+docker compose up --build
 ```
 
-The API is available at `http://localhost:8000/docs` (Swagger UI).
+This starts both Qdrant and the FastAPI app in Docker. The API is available at `http://localhost:8000/docs` (Swagger UI).
+
+```powershell
+# Windows PowerShell
+Invoke-WebRequest -Uri http://localhost:8000/query `
+  -Method POST `
+  -Headers @{"Content-Type"="application/json"} `
+  -Body '{"question": "What is MLflow Model Registry used for?"}' `
+  -UseBasicParsing
+```
 
 ```bash
+# Linux / macOS
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What is MLflow Model Registry used for?"}'
 ```
+
+## Tests
+
+```bash
+pytest tests/ -v
+```
+
+42 tests covering chunking, MDX cleaning, retrieval (mocked Qdrant), generator (mocked Ollama), and the FastAPI endpoints.
 
 ## Evaluation
 
@@ -129,7 +147,7 @@ The system was evaluated with [RAGAS](https://docs.ragas.io/) on a set of 6 ques
 To run the evaluation yourself:
 
 ```bash
-python run_ragas_eval.py --dataset eval_dataset.json --output ragas_results.csv
+python src/run_ragas_eval.py --dataset eval_dataset.json --output ragas_results.csv
 ```
 
 > The evaluation uses `llama3.1:8b` as judge model and runs best with a GPU. It was tested on Google Colab (T4).
@@ -143,7 +161,5 @@ python run_ragas_eval.py --dataset eval_dataset.json --output ragas_results.csv
 
 ## Next steps
 
-- Automated tests (pytest) for chunking, retrieval, and response format
 - Query observability in production (Langfuse)
-- Full Docker Compose setup (API + Qdrant) and deployment
 - Expand the indexed corpus and the evaluation dataset
