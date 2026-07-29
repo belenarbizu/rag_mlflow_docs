@@ -13,11 +13,10 @@ services:
     container_name: rag-api
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - QDRANT_URL=http://qdrant:6333
-      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-mlflow_docs}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-mistral}
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
     depends_on:
       - qdrant
     restart: on-failure:5
