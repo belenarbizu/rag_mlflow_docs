@@ -142,7 +142,7 @@ pytest tests/ -v
 
 The system was evaluated with [RAGAS](https://docs.ragas.io/) on a set of 6 questions with reference answers, measuring faithfulness (groundedness / hallucination), answer relevancy, and context precision/recall.
 
-**Summary results**: faithfulness 0.77 · answer relevancy 0.93 · context recall 0.75
+**Summary results**: faithfulness 0.86 · answer relevancy 0.76 · context recall 0.81
 
 To run the evaluation yourself:
 

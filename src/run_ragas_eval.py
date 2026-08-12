@@ -22,8 +22,8 @@ Uso:
 import argparse
 import json
 
-from langchain_community.chat_models import ChatOllama
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings
 from ragas import EvaluationDataset, RunConfig, evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
@@ -37,7 +37,7 @@ from ragas.metrics import (
 from generator import Generator
 from retriever import Retriever
 
-JUDGE_MODEL = "llama3.2:3b"  # modelo mas liviano que mistral; mas rapido en CPU como juez
+JUDGE_MODEL = "llama3.1:8b"  # modelo mas liviano que mistral; mas rapido en CPU como juez
 
 
 def build_ragas_dataset(eval_items, retriever, generator):
@@ -81,7 +81,13 @@ def main():
 
     print(f"Cargando modelo juez ({JUDGE_MODEL}) para evaluar...")
     judge_llm = LangchainLLMWrapper(
-        ChatOllama(model=JUDGE_MODEL, request_timeout=300.0, temperature=0.0)
+        ChatOllama(
+            model=JUDGE_MODEL,
+            request_timeout=600.0,   # subido de 300s a 600s
+            temperature=0.0,
+            format="json",          # fuerza a Ollama a devolver JSON válido a nivel de decoding
+            num_ctx=8192,
+        )
     )
     judge_embeddings = LangchainEmbeddingsWrapper(
         HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -96,7 +102,7 @@ def main():
 
     # max_workers=1 evita saturar a Ollama con peticiones en paralelo (es lo que
     # causaba los TimeoutError); timeout alto le da tiempo a un modelo en CPU.
-    run_config = RunConfig(timeout=300, max_workers=1, max_retries=2)
+    run_config = RunConfig(timeout=600, max_workers=1, max_retries=2)
 
     print("Calculando metricas (esto puede tardar varios minutos en CPU)...")
     result = evaluate(dataset=dataset, metrics=metrics, run_config=run_config)
@@ -106,7 +112,7 @@ def main():
 
     print("\n=== Resultados promedio ===")
     for col in ["faithfulness", "answer_relevancy",
-                "llm_context_precision_with_reference", "llm_context_recall"]:
+                "llm_context_precision_with_reference", "context_recall"]:
         if col in df.columns:
             print(f"  {col}: {df[col].mean():.2f}")
 
