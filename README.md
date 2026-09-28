@@ -8,6 +8,7 @@ Question-answering system over the official MLflow documentation (`classic-ml` s
 Documents (.mdx) → Cleaning + Chunking → Embeddings → Qdrant (vector DB)
                                                               ↓
                         User → FastAPI /query → Retrieval → LLM (Ollama) → Answer + sources
+                                     └────────── traces ──────────→ Langfuse
 ```
 
 ## Stack
@@ -21,6 +22,7 @@ Documents (.mdx) → Cleaning + Chunking → Embeddings → Qdrant (vector DB)
 | API | FastAPI |
 | Evaluation | RAGAS (faithfulness, answer relevancy, context precision/recall) |
 | Containers | Docker / Docker Compose |
+| Observability   | Langfuse (traces for retrieval, generation, latency) |
 
 ## Why this project
 
@@ -152,14 +154,25 @@ python src/run_ragas_eval.py --dataset eval_dataset.json --output ragas_results.
 
 > The evaluation uses `llama3.1:8b` as judge model and runs best with a GPU. It was tested on Google Colab (T4).
 
+## Observability
+
+Each `/query` request is traced with [Langfuse](https://langfuse.com/) (`@observe` decorators + `get_client`), capturing the retrieved chunks, the prompt sent to the LLM and the generated answer and per-step latency.
+
+Set the Langfuse credentials in `.env` (see `.env.example`):
+
+    LANGFUSE_PUBLIC_KEY=
+    LANGFUSE_SECRET_KEY=
+    LANGFUSE_HOST=[https://cloud.langfuse.com | http://localhost:3000]
+
 ## Design decisions
 
 - **Only `classic-ml` was indexed**, not the full MLflow documentation, as a deliberate scope for an evaluable MVP.
 - **Fully local models** (embeddings and LLM via Ollama) to avoid paid API dependencies and keep the project reproducible without API keys.
 - **Custom MDX cleaning**: frontmatter, JSX imports, UI components (`<Tabs>`, etc.) and broken image links are stripped out so the LLM receives clean, useful text rather than documentation markup.
 - Evaluation with a local LLM judge exposed real limitations — documented honestly rather than hidden, as part of a rigorous evaluation process.
+- Langfuse tracing added to inspect retrieval quality and latency per request, complementing the offline RAGAS evaluation.
 
 ## Next steps
 
-- Query observability in production (Langfuse)
 - Expand the indexed corpus and the evaluation dataset
+- Hybrid search (BM25 + semantic) and reranking
