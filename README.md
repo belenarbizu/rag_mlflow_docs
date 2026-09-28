@@ -80,13 +80,16 @@ rag-mlflow-docs/
 cp .env.example .env
 ```
 
-The `.env.example` file already contains the correct default values — no changes needed to run the project locally:
+The `.env.example` file already contains the correct default values except Langfuse key values:
 
 ```
 QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=mlflow_docs
 OLLAMA_MODEL=mistral
 OLLAMA_HOST=http://host.docker.internal:11434
+LANGFUSE_SECRET_KEY="..."
+LANGFUSE_PUBLIC_KEY="..."
+LANGFUSE_BASE_URL="https://cloud.langfuse.com"
 ```
 
 ### 3. Pull the local model
@@ -162,7 +165,7 @@ Set the Langfuse credentials in `.env` (see `.env.example`):
 
     LANGFUSE_PUBLIC_KEY=
     LANGFUSE_SECRET_KEY=
-    LANGFUSE_HOST=[https://cloud.langfuse.com | http://localhost:3000]
+    LANGFUSE_BASE_URL="https://cloud.langfuse.com"
 
 ## Design decisions
 
