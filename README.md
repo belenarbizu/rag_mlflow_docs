@@ -26,7 +26,7 @@ Documents (.mdx) → Cleaning + Chunking → Embeddings → Qdrant (vector DB)
 
 ## Why this project
 
-This project complements a previous classic MLOps project (churn prediction with experiment tracking, drift monitoring, and deployment) by tackling a GenAI use case: indexing real technical documentation and serving answers grounded in verifiable sources, while systematically evaluating quality and failure modes rather than assuming the system "just works".
+Answering questions over technical documentation requires answers that are grounded and verifiable. This project builds a fully local RAG system over the MLflow `classic-ml` docs and evaluates retrieval and generation separately, using RAGAS for offline metrics and Langfuse for per-request traces.
 
 ## Project structure
 
